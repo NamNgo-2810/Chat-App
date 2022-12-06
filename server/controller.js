@@ -1,5 +1,61 @@
+const RSA = require("./crypto/RSA");
+const user = require("./models/user");
 const conversation = require("./models/conversation");
 const message = require("./models/message");
+const { default: sha256 } = require("./crypto/SHA256");
+const { generateToken } = require("./crypto");
+
+exports.signup = async (req, res) => {
+    const existUser = await conversation.find({
+        username: req.body.username,
+    });
+
+    if (existUser) {
+        return res.status(401).json({ message: "user existed" });
+    }
+
+    const newUser = new user({
+        username: req.body.username,
+        password: sha256(req.body.password),
+        public_key: req.body.public_key,
+    });
+
+    try {
+        const savedUser = await newUser.save();
+        return res.status(200).json(savedUser);
+    } catch (error) {
+        console.log("error", error);
+    }
+};
+
+exports.login = async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        const checkUser = user.find({
+            username: username,
+        });
+        if (!checkUser) {
+            return res.status(401).json({ message: "user not found" });
+        }
+
+        if (sha256(password) !== checkUser.password) {
+            return res.status(401).json({ message: "wrong password" });
+        }
+
+        const accessToken = await generateToken(
+            username,
+            process.env.ACCESS_TOKEN_SECRET,
+            process.env.ACCESS_TOKEN_LIFE
+        );
+
+        return res.json({
+            accessToken,
+            user,
+        });
+    } catch (error) {
+        console.log(error);
+    }
+};
 
 exports.createNewConversation = async (req, res) => {
     const existConversations = await conversation.find({
@@ -17,6 +73,12 @@ exports.createNewConversation = async (req, res) => {
     if (exist) {
         return res.status(200).json(exist);
     }
+
+    // const key1 = RSA.generate(250)
+    // const keys1 = {public: {e: key1.e, n: key1.n}, private: key1.d}
+
+    // const key2 = RSA.generate(250)
+    // const keys2 = {public: {e: key2.e, n: key2.n}, private: key2.d}
 
     const newConversation = new conversation({
         members: [
@@ -67,7 +129,14 @@ exports.getMessages = async (req, res) => {
         const messages = await message.find({
             conversationId: req.query.conversationId,
         });
-        res.status(200).json(messages);
+        const receiver = await user.find({
+            id: req.body.receiver_id,
+        });
+
+        res.status(200).json({
+            messages: messages,
+            public_key: receiver.public_key,
+        });
     } catch (error) {
         res.status(500).send(error);
     }

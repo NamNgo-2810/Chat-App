@@ -28,12 +28,21 @@ io.on("connection", (socket) => {
         io.emit("getUsers", users);
     });
 
+    socket.on("newConversation", ({ senderId, receiverId }) => {
+        const user = getUser(receiverId);
+        if (user) {
+            io.to(user.socketId).emit("genKey", {
+                senderId,
+            });
+        }
+    });
+
     // send and get message
     socket.on(
         "sendMessage",
         ({ senderId, receiverId, contentType, content }) => {
             const user = getUser(receiverId);
-            console.log("user", user);
+            // console.log("user", user);
             if (user) {
                 io.to(user.socketId).emit("getMessage", {
                     senderId,
