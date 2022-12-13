@@ -81,7 +81,7 @@ var sha256 = function sha256(ascii) {
                                   rightRotate(w2, 19) ^
                                   (w2 >>> 10))) | // s1
                           0);
-            // This is only used once, so *could* be moved below, but it only saves 4 bytes and makes things unreadble
+            // This is only used once, so could be moved below, but it only saves 4 bytes and makes things unreadble
             var temp2 =
                 (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) + // S0
                 ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2])); // maj
