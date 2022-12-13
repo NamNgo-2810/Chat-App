@@ -1,49 +1,50 @@
-const user = require("./models/user");
-const conversation = require("./models/conversation");
-const message = require("./models/message");
+const User = require("./models/User");
+const Conversation = require("./models/Conversation");
+const Message = require("./models/Message");
 const { generateToken } = require("./crypto/jwt");
-const { hash } = require("./crypto/SHA256");
+const sha256 = require("./crypto/SHA256");
 
 exports.ping = (req, res) => {
-    console.log(req);
     return res.status(200).json({ message: "pong" });
 };
 
 exports.signup = async (req, res) => {
-    console.log(req.body);
-    const existUser = await conversation.find({
-        username: req.body.username,
-    });
-
-    if (existUser) {
-        return res.status(401).json({ message: "user existed" });
-    }
-
-    const newUser = new user({
-        username: req.body.username,
-        password: hash(req.body.password),
-        public_key: req.body.public_key,
-    });
-
     try {
+        // const existUser = await User.find({
+        //     username: req.body.username,
+        // });
+
+        // if (existUser) {
+        //     return res.status(401).json({ message: "user existed" });
+        // }
+
+        const hashPassword = sha256.hash(req.body.password);
+
+        const newUser = new User({
+            username: req.body.username,
+            password: hashPassword,
+            public_key: req.body.public_key,
+        });
+
         const savedUser = await newUser.save();
         return res.status(200).json(savedUser);
     } catch (error) {
         console.log("error", error);
+        return res.status(500).json({ message: "internal server error" });
     }
 };
 
 exports.login = async (req, res) => {
     try {
         const { username, password } = req.body;
-        const checkUser = user.find({
+        const checkUser = User.find({
             username: username,
         });
         if (!checkUser) {
             return res.status(401).json({ message: "user not found" });
         }
 
-        if (hash(password) !== checkUser.password) {
+        if (sha256.hash(password) !== checkUser.password) {
             return res.status(401).json({ message: "wrong password" });
         }
 
@@ -55,7 +56,7 @@ exports.login = async (req, res) => {
 
         return res.json({
             accessToken,
-            user,
+            user: User,
         });
     } catch (error) {
         console.log(error);
@@ -63,7 +64,7 @@ exports.login = async (req, res) => {
 };
 
 exports.createNewConversation = async (req, res) => {
-    const existConversations = await conversation.find({
+    const existConversations = await Conversation.find({
         id: req.body.id_1,
     });
 
@@ -85,7 +86,7 @@ exports.createNewConversation = async (req, res) => {
     // const key2 = RSA.generate(250)
     // const keys2 = {public: {e: key2.e, n: key2.n}, private: key2.d}
 
-    const newConversation = new conversation({
+    const newConversation = new Conversation({
         members: [
             {
                 id: req.body.id_1,
@@ -120,7 +121,7 @@ exports.getConversationOfUser = async (req, res) => {
 };
 
 exports.sendMessage = async (req, res) => {
-    const newMessage = new message(req.body);
+    const newMessage = new Message(req.body);
     try {
         const savedMessage = await newMessage.save();
         res.status(200).json(savedMessage);
@@ -131,10 +132,10 @@ exports.sendMessage = async (req, res) => {
 
 exports.getMessages = async (req, res) => {
     try {
-        const messages = await message.find({
+        const messages = await Message.find({
             conversationId: req.query.conversationId,
         });
-        const receiver = await user.find({
+        const receiver = await User.find({
             id: req.body.receiver_id,
         });
 

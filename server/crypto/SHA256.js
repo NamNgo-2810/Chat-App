@@ -1,4 +1,4 @@
-const hash = (ascii) => {
+const _hash = (ascii) => {
     function rightRotate(value, amount) {
         return (value >>> amount) | (value << (32 - amount));
     }
@@ -15,9 +15,9 @@ const hash = (ascii) => {
     //* caching results is optional - remove/add slash from front of this line to toggle
     // Initial hash value: first 32 bits of the fractional parts of the square roots of the first 8 primes
     // (we actually calculate the first 64, but extra values are just ignored)
-    var hash = (hash.h = hash.h || []);
+    var hash = (_hash.h = _hash.h || []);
     // Round constants: first 32 bits of the fractional parts of the cube roots of the first 64 primes
-    var k = (hash.k = hash.k || []);
+    var k = (_hash.k = _hash.k || []);
     var primeCounter = k[lengthProperty];
     /*/
 	var hash = [], k = [];
@@ -105,5 +105,5 @@ const hash = (ascii) => {
 };
 
 module.exports = {
-    hash: hash,
+    hash: _hash,
 };

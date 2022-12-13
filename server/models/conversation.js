@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const conversationSchema = new mongoose.Schema(
+const ConversationSchema = new mongoose.Schema(
     {
         members: {
             type: Array,
@@ -11,4 +11,4 @@ const conversationSchema = new mongoose.Schema(
     }
 );
 
-module.exports = mongoose.model("conversation", conversationSchema);
+module.exports = mongoose.model("Conversation", ConversationSchema);
