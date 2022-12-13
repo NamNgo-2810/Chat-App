@@ -1,11 +1,16 @@
-const RSA = require("./crypto/RSA");
 const user = require("./models/user");
 const conversation = require("./models/conversation");
 const message = require("./models/message");
-const { generateToken } = require("./crypto");
+const { generateToken } = require("./crypto/jwt");
 const { hash } = require("./crypto/SHA256");
 
+exports.ping = (req, res) => {
+    console.log(req);
+    return res.status(200).json({ message: "pong" });
+};
+
 exports.signup = async (req, res) => {
+    console.log(req.body);
     const existUser = await conversation.find({
         username: req.body.username,
     });

@@ -3,6 +3,7 @@ const router = express.Router();
 const controller = require("./controller");
 const middleware = require("./middleware");
 
+router.get("/ping", controller.ping);
 router.post("/signup", controller.signup);
 router.post("/login", controller.login);
 router.post("/conversation/create", controller.createNewConversation);
