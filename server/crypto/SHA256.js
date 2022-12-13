@@ -1,4 +1,4 @@
-var sha256 = function sha256(ascii) {
+const hash = (ascii) => {
     function rightRotate(value, amount) {
         return (value >>> amount) | (value << (32 - amount));
     }
@@ -15,9 +15,9 @@ var sha256 = function sha256(ascii) {
     //* caching results is optional - remove/add slash from front of this line to toggle
     // Initial hash value: first 32 bits of the fractional parts of the square roots of the first 8 primes
     // (we actually calculate the first 64, but extra values are just ignored)
-    var hash = (sha256.h = sha256.h || []);
+    var hash = (hash.h = hash.h || []);
     // Round constants: first 32 bits of the fractional parts of the cube roots of the first 64 primes
-    var k = (sha256.k = sha256.k || []);
+    var k = (hash.k = hash.k || []);
     var primeCounter = k[lengthProperty];
     /*/
 	var hash = [], k = [];
@@ -104,4 +104,6 @@ var sha256 = function sha256(ascii) {
     return result;
 };
 
-export default sha256;
+module.exports = {
+    hash: hash,
+};

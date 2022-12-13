@@ -1,7 +1,5 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
-import axios from "axios";
+import React, { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
-// import AuthContext from "../../contexts/AuthContext";
 import {
     ChatContainer,
     MainContainer,
@@ -16,10 +14,8 @@ import {
     Search,
 } from "@chatscope/chat-ui-kit-react";
 import styles from "@chatscope/chat-ui-kit-styles/dist/default/styles.min.css";
-// import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
-// import { storage } from "../../services/firebase.service";
-
-const chatURL = "http://localhost:5000/api/chat/";
+import RSA from "./RSA";
+import { getConversationOfUser, getMessages, sendMessage } from "./CommonCall";
 
 function Chat() {
     const [conversations, setConversations] = useState([]);
@@ -28,18 +24,17 @@ function Chat() {
 
     const [arrivalMessage, setArrivalMessage] = useState(null);
     const [message, setMessage] = useState("");
+    const [publicKey, setPublicKey] = useState();
     const socket = useRef(io("ws://localhost:8900"));
-    // const { user } = useContext(AuthContext);
     const user = {
-        user_id: 1,
-        username: "abc",
+        user_id: localStorage.getItem("userId"),
+        username: localStorage.getItem("username"),
     };
 
-    const getConversations = async () => {
+    const fetchConversations = async () => {
         try {
-            const res = await axios.get(
-                `${chatURL}conversation?userId=${user.user_id}`
-            );
+            const res = await getConversationOfUser(user.user_id);
+
             setConversations(res.data);
             setCurrentChat(res.data[0]);
         } catch (error) {
@@ -47,13 +42,11 @@ function Chat() {
         }
     };
 
-    const getMessages = async () => {
+    const fetchMessages = async () => {
         try {
-            const res = await axios.get(
-                `${chatURL}message?conversationId=${currentChat._id}`
-            );
-            // TODO: Decrypt the messages get from server
-            setMessages(res.data);
+            const res = await getMessages(currentChat._id);
+            setMessages(res.messages);
+            setPublicKey(res.publicKey);
         } catch (error) {
             console.log(error);
         }
@@ -64,57 +57,24 @@ function Chat() {
             console.log("Empty");
             return;
         }
-        // if (imageMessage) {
-        //     const uploadTask = uploadBytesResumable(
-        //         ref(storage, `${imageMessage.name}-${user.user_id}`),
-        //         imageMessage
-        //     )
-        //         .then((result) => {
-        //             return getDownloadURL(result.ref);
-        //         })
-        //         .then((downloadURL) => {
-        //             const newMessage = {
-        //                 sender: user.username,
-        //                 senderId: user.user_id,
-        //                 contentType: "image",
-        //                 content: downloadURL,
-        //                 conversationId: currentChat._id,
-        //             };
-        //             return newMessage;
-        //         })
-        //         .then(async (newMessage) => {
-        //             const res = await axios.post(
-        //                 `${chatURL}message/send`,
-        //                 newMessage
-        //             );
-        //             return { res, newMessage };
-        //         })
-        //         .then(({ res, newMessage }) => {
-        //             setMessages([...messages, res.data]);
 
-        //             const receiverId = currentChat.members.find(
-        //                 (member) => member.id != user.user_id
-        //             ).id;
+        const encryptedMessage = RSA.encrypt(
+            RSA.encode(content),
+            publicKey.n,
+            publicKey.e
+        );
 
-        //             socket.current.emit("sendMessage", {
-        //                 senderId: user.user_id,
-        //                 receiverId: receiverId,
-        //                 contentType: newMessage.contentType,
-        //                 content: newMessage.content,
-        //             });
-        //         });
-        // } else {
         const newMessage = {
             sender: user.username,
             senderId: user.user_id,
             contentType: "text",
-            content: content, // TODO: Encrypt the content
+            content: encryptedMessage,
             conversationId: currentChat._id,
         };
 
         try {
-            const res = await axios.post(`${chatURL}message/send`, newMessage);
-            setMessages([...messages, res.data]);
+            const res = await sendMessage(newMessage);
+            setMessages([...messages, { ...res.data, content: content }]);
         } catch (error) {
             console.log(error);
             return;
@@ -128,9 +88,8 @@ function Chat() {
             senderId: user.user_id,
             receiverId: receiverId,
             contentType: newMessage.contentType,
-            content: newMessage.content, // TODO: Encrypt the content before emit to socket
+            content: newMessage.content,
         });
-        // }
 
         setMessage("");
     };
@@ -141,7 +100,13 @@ function Chat() {
             setArrivalMessage({
                 senderId: data.senderId,
                 contentType: data.contentType,
-                content: data.content,
+                content: RSA.decode(
+                    RSA.decrypt(
+                        data.content,
+                        process.env.SECRET_KEY,
+                        publicKey.n
+                    )
+                ),
                 createdAt: Date.now(),
             });
         });
@@ -157,12 +122,12 @@ function Chat() {
     }, [user]);
 
     useEffect(() => {
-        getConversations();
+        fetchConversations();
     }, [user.user_id]);
 
     useEffect(() => {
         if (currentChat) {
-            getMessages();
+            fetchMessages();
         }
     }, [currentChat]);
 

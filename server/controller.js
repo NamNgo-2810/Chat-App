@@ -2,8 +2,8 @@ const RSA = require("./crypto/RSA");
 const user = require("./models/user");
 const conversation = require("./models/conversation");
 const message = require("./models/message");
-const { default: sha256 } = require("./crypto/SHA256");
 const { generateToken } = require("./crypto");
+const { hash } = require("./crypto/SHA256");
 
 exports.signup = async (req, res) => {
     const existUser = await conversation.find({
@@ -16,7 +16,7 @@ exports.signup = async (req, res) => {
 
     const newUser = new user({
         username: req.body.username,
-        password: sha256(req.body.password),
+        password: hash(req.body.password),
         public_key: req.body.public_key,
     });
 
@@ -38,7 +38,7 @@ exports.login = async (req, res) => {
             return res.status(401).json({ message: "user not found" });
         }
 
-        if (sha256(password) !== checkUser.password) {
+        if (hash(password) !== checkUser.password) {
             return res.status(401).json({ message: "wrong password" });
         }
 
