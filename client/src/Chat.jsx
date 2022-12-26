@@ -22,6 +22,7 @@ import {
     logout,
     sendMessage,
 } from "./CommonCall";
+import bigInt from "big-integer";
 
 function Chat() {
     const [conversations, setConversations] = useState([]);
@@ -51,7 +52,7 @@ function Chat() {
     const fetchMessages = async () => {
         try {
             const res = await getPublicKey(currentChat._id, user.user_id);
-            setPublicKey(res.public_key);
+            setPublicKey({ n: bigInt(res.n), e: bigInt(res.e) });
             const res1 = await getMessages(currentChat._id, publicKey);
             setMessages(res1.messages);
         } catch (error) {
@@ -224,7 +225,7 @@ function Chat() {
                                 <Message
                                     model={{
                                         direction:
-                                            message?.senderId === user.user_id
+                                            message?.senderId == user.user_id
                                                 ? "outgoing"
                                                 : "incoming",
                                     }}
@@ -235,22 +236,15 @@ function Chat() {
                                         src={
                                             currentChat?.members.find(
                                                 (member) =>
-                                                    message?.senderId ===
+                                                    message?.senderId ==
                                                     member.id
                                             )?.avtUrl
                                         }
                                     />
-                                    {message?.contentType === "text" ? (
-                                        <Message.TextContent
-                                            text={message?.content}
-                                        />
-                                    ) : (
-                                        <Message.ImageContent
-                                            src={message?.content}
-                                            alt=""
-                                            width={150}
-                                        />
-                                    )}
+
+                                    <Message.TextContent
+                                        text={message?.content}
+                                    />
                                 </Message>
                             );
                         })}

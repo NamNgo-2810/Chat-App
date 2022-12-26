@@ -12,6 +12,7 @@ export default function Register() {
     const passwordAgain = useRef();
 
     const handleClickRegister = async () => {
+        console.log(username.current.value, password.current.value);
         if (password.current.value !== passwordAgain.current.value) {
             alert("Password doesn't match!");
             return;
@@ -76,6 +77,12 @@ export default function Register() {
                             Login to Account
                         </button>
                     </form>
+                    <button
+                        className="registerButton"
+                        onClick={handleClickRegister}
+                    >
+                        Sign Up
+                    </button>
                 </div>
             </div>
         </div>

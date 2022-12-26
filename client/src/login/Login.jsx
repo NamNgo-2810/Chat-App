@@ -18,7 +18,7 @@ export default function Login() {
             localStorage.setItem("access_token", result.data.access_token);
             localStorage.setItem("username", result.data.username);
             localStorage.setItem("user_id", result.data.user_id);
-            // navigate("/chat");
+            navigate("/chat");
         } else alert("wrong credentials");
     };
 
