@@ -24,9 +24,10 @@ exports.signup = async (req, res) => {
             username: req.body.username,
             password: hashPassword,
             public_key: req.body.public_key,
+            private_key: req.body.private_key,
         });
 
-        const savedUser = await newUser.save();
+        await newUser.save();
         return res.status(200).json({ message: "register success" });
     } catch (error) {
         console.log("error", error);
@@ -61,6 +62,7 @@ exports.login = async (req, res) => {
             username: checkUser[0].username,
             user_id: checkUser[0]._id,
             avt_url: checkUser[0].avt_url || null,
+            private_key: checkUser[0].private_key,
         });
     } catch (error) {
         console.log(error);

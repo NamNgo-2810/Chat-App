@@ -28,10 +28,9 @@ export const login = async (username, password) => {
     });
 
     if (res.status == 200) {
-        localStorage.setItem(
-            "private_key",
-            xorDecrypt(res.private_key, password)
-        );
+        const rawPrivateKey = xorDecrypt(res.data.private_key, password);
+        console.log("private key", rawPrivateKey);
+        localStorage.setItem("private_key", rawPrivateKey);
     }
 
     return res;

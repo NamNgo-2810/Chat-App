@@ -12,11 +12,14 @@ export default function Register() {
     const passwordAgain = useRef();
 
     const handleClickRegister = async () => {
-        if (password.current !== passwordAgain.current) {
+        if (password.current.value !== passwordAgain.current.value) {
             alert("Password doesn't match!");
             return;
         }
-        const result = await register(username.current, password.current);
+        const result = await register(
+            username.current.value,
+            password.current.value
+        );
         if (result.status == 200) {
             alert("Register success");
             navigate("/");
