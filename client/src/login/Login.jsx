@@ -1,19 +1,25 @@
-import { useContext, useRef } from "react";
 import { login } from "../CommonCall";
 import "./Login.css";
 import { useNavigate } from "react-router-dom";
+import { useRef } from "react";
 
 export default function Login() {
     let navigate = useNavigate();
+
     const username = useRef();
     const password = useRef();
 
     const handleClickLogin = async () => {
-        const result = await login(username.current, password.current);
-        if (result.access_token) {
-            localStorage.setItem("access_token", result.access_token);
+        const result = await login(
+            username.current.value,
+            password.current.value
+        );
+        if (result.data.access_token) {
+            localStorage.setItem("access_token", result.data.access_token);
+            localStorage.setItem("username", result.data.username);
+            localStorage.setItem("user_id", result.data.user_id);
             navigate("/chat");
-        }
+        } else alert("Wrong credentials");
     };
 
     const handleClickCreateNewAccount = (e) => {
@@ -34,6 +40,8 @@ export default function Login() {
                             required
                             className="loginInput"
                             ref={username}
+                            // value={username}
+                            // onChange={(e) => setUsername(e)}
                         />
                         <input
                             placeholder="Password"
@@ -41,6 +49,7 @@ export default function Login() {
                             required
                             minLength="6"
                             className="loginInput"
+                            // onChange={(e) => setPassword(e)}
                             ref={password}
                         />
                         <button
@@ -48,7 +57,7 @@ export default function Login() {
                             type="submit"
                             onClick={handleClickLogin}
                         >
-                            Log in
+                            Login
                         </button>
                         <button
                             className="loginRegisterButton"

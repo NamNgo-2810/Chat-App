@@ -10,13 +10,13 @@ exports.ping = (req, res) => {
 
 exports.signup = async (req, res) => {
     try {
-        // const existUser = await User.find({
-        //     username: req.body.username,
-        // });
+        const existUser = await User.find({
+            username: req.body.username,
+        });
 
-        // if (existUser) {
-        //     return res.status(401).json({ message: "user existed" });
-        // }
+        if (existUser.length > 0) {
+            return res.status(401).json({ message: "user existed" });
+        }
 
         const hashPassword = sha256.hash(req.body.password);
 
@@ -27,7 +27,7 @@ exports.signup = async (req, res) => {
         });
 
         const savedUser = await newUser.save();
-        return res.status(200).json(savedUser);
+        return res.status(200).json({ message: "register success" });
     } catch (error) {
         console.log("error", error);
         return res.status(500).json({ message: "internal server error" });
@@ -37,14 +37,16 @@ exports.signup = async (req, res) => {
 exports.login = async (req, res) => {
     try {
         const { username, password } = req.body;
-        const checkUser = User.find({
+        const checkUser = await User.find({
             username: username,
         });
-        if (!checkUser) {
+        if (checkUser.length != 1) {
             return res.status(401).json({ message: "user not found" });
         }
 
-        if (sha256.hash(password) !== checkUser.password) {
+        const tmp = sha256.hash(password);
+
+        if (tmp !== checkUser[0].password) {
             return res.status(401).json({ message: "wrong password" });
         }
 
@@ -55,8 +57,10 @@ exports.login = async (req, res) => {
         );
 
         return res.json({
-            accessToken,
-            user: User,
+            access_token: accessToken,
+            username: checkUser[0].username,
+            user_id: checkUser[0]._id,
+            avt_url: checkUser[0].avt_url || null,
         });
     } catch (error) {
         console.log(error);
@@ -79,12 +83,6 @@ exports.createNewConversation = async (req, res) => {
     if (exist) {
         return res.status(200).json(exist);
     }
-
-    // const key1 = RSA.generate(250)
-    // const keys1 = {public: {e: key1.e, n: key1.n}, private: key1.d}
-
-    // const key2 = RSA.generate(250)
-    // const keys2 = {public: {e: key2.e, n: key2.n}, private: key2.d}
 
     const newConversation = new Conversation({
         members: [
@@ -111,9 +109,10 @@ exports.createNewConversation = async (req, res) => {
 
 exports.getConversationOfUser = async (req, res) => {
     try {
-        const conversation = await conversation.find({
+        const conversation = await Conversation.find({
             id: req.query.userId,
         });
+
         return res.status(200).json(conversation);
     } catch (error) {
         return res.status(500).send(error);
@@ -124,9 +123,9 @@ exports.sendMessage = async (req, res) => {
     const newMessage = new Message(req.body);
     try {
         const savedMessage = await newMessage.save();
-        res.status(200).json(savedMessage);
+        return res.status(200).json(savedMessage);
     } catch (error) {
-        res.status(500).send(error);
+        return res.status(500).send(error);
     }
 };
 
@@ -135,14 +134,28 @@ exports.getMessages = async (req, res) => {
         const messages = await Message.find({
             conversationId: req.query.conversationId,
         });
-        const receiver = await User.find({
-            id: req.body.receiver_id,
-        });
 
         res.status(200).json({
             messages: messages,
-            public_key: receiver.public_key,
         });
+    } catch (error) {
+        res.status(500).send(error);
+    }
+};
+
+exports.getPublicKey = async (req, res) => {
+    try {
+        const conversation = await Conversation.findById(
+            req.query.conversationId
+        );
+
+        const receiver = conversation.members.filter(
+            (member) => member.id != req.query.senderId
+        );
+
+        const receiver1 = await User.findById(receiver[0].id);
+
+        return res.status(200).send(receiver1.public_key);
     } catch (error) {
         res.status(500).send(error);
     }

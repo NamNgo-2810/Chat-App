@@ -13,9 +13,14 @@ export default function Register() {
 
     const handleClickRegister = async () => {
         if (password.current !== passwordAgain.current) {
+            alert("Password doesn't match!");
             return;
         }
         const result = await register(username.current, password.current);
+        if (result.status == 200) {
+            alert("Register success");
+            navigate("/");
+        }
     };
 
     const handleClickLogin = async () => {
@@ -54,14 +59,18 @@ export default function Register() {
                             className="registerInput"
                             type="password"
                         />
-                        <button className="registerButton" type="submit">
+                        <button
+                            className="registerButton"
+                            type="submit"
+                            onClick={handleClickRegister}
+                        >
                             Sign Up
                         </button>
                         <button
                             className="registerLoginButton"
                             onClick={handleClickLogin}
                         >
-                            Log into Account
+                            Login to Account
                         </button>
                     </form>
                 </div>

@@ -171,13 +171,13 @@ const hex2str = (hexx) => {
     return str;
 };
 
-const pt = str2hex(JSON.stringify({ nam: { e: 1, n: 1 } }));
-console.log(pt);
-console.log(bin(pt));
+// const pt = str2hex(JSON.stringify({ nam: { e: 1, n: 1 } }));
+// console.log(pt);
+// console.log(bin(pt));
 
 let key = bin("133457799BBCDFF1"); // hex
 // let msg = bin(str2hex(JSON.stringify({ nam: { e: 1, n: 1 } }))); // hex
-let enc = encode(bin(pt), key);
+let enc = encode(0x0d, key);
 
 console.log(bin(enc));
 console.log(decode(bin(enc), key));

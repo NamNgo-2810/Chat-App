@@ -15,7 +15,13 @@ import {
 } from "@chatscope/chat-ui-kit-react";
 import styles from "@chatscope/chat-ui-kit-styles/dist/default/styles.min.css";
 import RSA from "./RSA";
-import { getConversationOfUser, getMessages, sendMessage } from "./CommonCall";
+import {
+    getConversationOfUser,
+    getMessages,
+    getPublicKey,
+    logout,
+    sendMessage,
+} from "./CommonCall";
 
 function Chat() {
     const [conversations, setConversations] = useState([]);
@@ -27,7 +33,7 @@ function Chat() {
     const [publicKey, setPublicKey] = useState();
     const socket = useRef(io("ws://localhost:8900"));
     const user = {
-        user_id: localStorage.getItem("userId"),
+        user_id: localStorage.getItem("user_id"),
         username: localStorage.getItem("username"),
     };
 
@@ -44,9 +50,10 @@ function Chat() {
 
     const fetchMessages = async () => {
         try {
-            const res = await getMessages(currentChat._id);
-            setMessages(res.messages);
-            setPublicKey(res.publicKey);
+            const res = await getPublicKey(currentChat._id, user.user_id);
+            setPublicKey(res.public_key);
+            const res1 = await getMessages(currentChat._id, publicKey);
+            setMessages(res1.messages);
         } catch (error) {
             console.log(error);
         }
@@ -113,13 +120,15 @@ function Chat() {
     }, []);
 
     useEffect(() => {
-        setMessages((prev) => [...prev, arrivalMessage]);
-    }, [arrivalMessage]);
+        socket.current.emit("addUser", user.user_id);
+        // socket.current.on("getUsers", (users) => {
+        //     console.log(users);
+        // });
+    }, [user]);
 
     useEffect(() => {
-        socket.current.emit("addUser", user.user_id);
-        // socket.current.on("getUsers", (users) => {});
-    }, [user]);
+        setMessages((prev) => [...prev, arrivalMessage]);
+    }, [arrivalMessage]);
 
     useEffect(() => {
         fetchConversations();
@@ -133,6 +142,7 @@ function Chat() {
 
     return (
         <div style={{ marginTop: "80px", height: "450px" }}>
+            <button onClick={logout}>Logout</button>
             <MainContainer>
                 <Sidebar position="left" scrollable={false}>
                     <Search placeholder="Search..." />
@@ -257,6 +267,13 @@ function Chat() {
                     />
                 </ChatContainer>
             </MainContainer>
+            <button
+                type="submit"
+                title="Logout"
+                onClick={() => {
+                    localStorage.clear();
+                }}
+            />
         </div>
     );
 }

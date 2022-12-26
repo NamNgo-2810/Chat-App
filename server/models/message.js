@@ -9,9 +9,6 @@ const MessageSchema = new mongoose.Schema(
             type: String,
         },
         senderId: {
-            type: Number,
-        },
-        contentType: {
             type: String,
         },
         content: {

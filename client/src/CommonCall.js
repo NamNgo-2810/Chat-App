@@ -1,63 +1,50 @@
 import axios from "axios";
+import { xorDecrypt, xorEncrypt } from "./XOR";
 // import * as fs from "fs";
 // import * as os from "os";
 const RSA = require("../src/RSA");
 
-const SECRET_KEY = "SECRET_KEY";
-// const setEnvValue = (key, value) => {
-//     // read file from hdd & split if from a linebreak to a array
-//     const ENV_VARS = fs.readFileSync("./.env", "utf8").split(os.EOL);
-
-//     // find the env we want based on the key
-//     const target = ENV_VARS.indexOf(
-//         ENV_VARS.find((line) => {
-//             return line.match(new RegExp(key));
-//         })
-//     );
-
-//     // replace the key/value with the new value
-//     ENV_VARS.splice(target, 1, `${key}=${value}`);
-
-//     // write everything back to the file system
-//     fs.writeFileSync("../.env", ENV_VARS.join(os.EOL));
-// };
+const API_URI = "http://localhost:8080/api/";
 
 export const register = async (username, password) => {
     const key = RSA.generate(250);
     const public_key = { e: key.e, n: key.n };
+    const encrypted_private_key = xorEncrypt(key.d, password);
 
-    const res = await axios.post(process.env.API_URI + `signup`, {
+    const res = await axios.post(API_URI + `signup`, {
         username: username,
         password: password,
         public_key: public_key,
+        private_key: encrypted_private_key,
     });
 
-    // if (res.status == 200) {
-    //     setEnvValue(SECRET_KEY, key.d);
-    // }
-
-    return res;
+    return { status: res.status, data: res.data };
 };
 
 export const login = async (username, password) => {
-    const res = await axios.post(process.env.API_URI + `login`, {
+    const res = await axios.post(API_URI + `login`, {
         username: username,
         password: password,
     });
+
+    if (res.status == 200) {
+        localStorage.setItem(
+            "private_key",
+            xorDecrypt(res.private_key, password)
+        );
+    }
 
     return res;
 };
 
 export const getConversationOfUser = async (user_id) => {
-    const res = await axios.get(
-        process.env.API_URI + `conversation?userId=${user_id}`
-    );
+    const res = await axios.get(API_URI + `conversation?userId=${user_id}`);
 
     return res;
 };
 
 export const sendMessage = async (data) => {
-    const res = await axios.post(process.env.API_URI + "message/send", data, {
+    const res = await axios.post(API_URI + "message/send", data, {
         headers: {
             x_authorization: localStorage.getItem("access_token"),
         },
@@ -66,19 +53,38 @@ export const sendMessage = async (data) => {
     return res;
 };
 
-export const getMessages = async (conversation_id) => {
+export const getMessages = async (conversation_id, public_key) => {
     const res = await axios.get(
-        process.env.API_URI + `/message?conversationId=${conversation_id}`,
+        API_URI + `/message?conversationId=${conversation_id}`,
         { headers: { x_authorization: localStorage.getItem("access_token") } }
     );
-    if (res.messages) {
-        const decrypted_messages = res.messages.map((message) => {
-            return RSA.decode(
-                RSA.decrypt(message, process.env.SECRET_KEY, res.public_key.n)
-            );
+    if (res.status == 200) {
+        const SECRET_KEY = localStorage.getItem("private_key");
+        res.data.messages.map((message) => {
+            return {
+                ...message,
+                content: RSA.decode(
+                    RSA.decrypt(message.content, SECRET_KEY, public_key?.n)
+                ),
+            };
         });
-        res.messages = decrypted_messages;
 
-        return res;
+        return res.data;
     }
+
+    return [];
+};
+
+export const getPublicKey = async (conversation_id, sender_id) => {
+    const res = await axios.get(
+        API_URI +
+            `/publicKey?conversationId=${conversation_id}&senderId=${sender_id}`,
+        { headers: { x_authorization: localStorage.getItem("access_token") } }
+    );
+
+    return res.data;
+};
+
+export const logout = async () => {
+    localStorage.clear();
 };
