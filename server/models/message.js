@@ -11,10 +11,7 @@ const MessageSchema = new mongoose.Schema(
         senderId: {
             type: String,
         },
-        contentForReceiver: {
-            type: String,
-        },
-        contentForSender: {
+        content: {
             type: String,
         },
     },

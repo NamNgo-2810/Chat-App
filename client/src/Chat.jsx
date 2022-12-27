@@ -52,8 +52,8 @@ function Chat() {
     const fetchMessages = async () => {
         try {
             const res = await getPublicKey(currentChat._id, user.user_id);
-            localStorage.setItem("n", res.n);
-            localStorage.setItem("e", res.e);
+            localStorage.setItem("n_receiver", res.n);
+            localStorage.setItem("e_receiver", res.e);
             const res1 = await getMessages(currentChat._id);
             setMessages(res1.messages);
         } catch (error) {
@@ -69,21 +69,20 @@ function Chat() {
 
         const encryptedMessageForReceiver = RSA.encrypt(
             RSA.encode(content),
-            bigInt(localStorage.getItem("n")),
-            bigInt(localStorage.getItem("e"))
+            bigInt(localStorage.getItem("n_receiver")),
+            bigInt(localStorage.getItem("e_receiver"))
         );
 
-        const encrypterMessageForSender = AES.encrypt(
+        const encryptedMessageForSender = AES.encrypt(
             content,
-            localStorage.getItem("private_key")
-        );
+            localStorage.getItem("d_sender")
+        ).toString();
 
         const newMessage = {
             sender: user.username,
             senderId: user.user_id,
             contentType: "text",
-            contentForReceiver: encryptedMessageForReceiver,
-            contentForSender: encrypterMessageForSender,
+            content: `${encryptedMessageForSender}${encryptedMessageForReceiver}`,
             conversationId: currentChat._id,
         };
 
@@ -103,7 +102,7 @@ function Chat() {
             senderId: user.user_id,
             receiverId: receiverId,
             contentType: newMessage.contentType,
-            content: newMessage.contentForReceiver,
+            content: encryptedMessageForReceiver,
         });
 
         setMessage("");
@@ -118,8 +117,8 @@ function Chat() {
                 content: RSA.decode(
                     RSA.decrypt(
                         data.content,
-                        bigInt(localStorage.getItem("private_key")),
-                        bigInt(localStorage.getItem("n"))
+                        bigInt(localStorage.getItem("d_sender")),
+                        bigInt(localStorage.getItem("n_sender"))
                     )
                 ),
                 createdAt: Date.now(),
