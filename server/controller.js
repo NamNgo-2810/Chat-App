@@ -63,6 +63,7 @@ exports.login = async (req, res) => {
             user_id: checkUser[0]._id,
             avt_url: checkUser[0].avt_url || null,
             private_key: checkUser[0].private_key,
+            public_key: checkUser[0].public_key,
         });
     } catch (error) {
         console.log(error);

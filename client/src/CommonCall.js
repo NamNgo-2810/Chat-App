@@ -15,7 +15,7 @@ export const register = async (username, password) => {
 
     console.log(encrypted_private_key);
 
-    const res = await axios.post(API_URI + signup, {
+    const res = await axios.post(API_URI + `signup`, {
         username: username,
         password: password,
         public_key: public_key,
@@ -26,7 +26,7 @@ export const register = async (username, password) => {
 };
 
 export const login = async (username, password) => {
-    const res = await axios.post(API_URI + login, {
+    const res = await axios.post(API_URI + `login`, {
         username: username,
         password: password,
     });
@@ -37,7 +37,8 @@ export const login = async (username, password) => {
                 CryptoJS.enc.Utf8
             )
         );
-        localStorage.setItem("private_key", rawPrivateKey);
+        localStorage.setItem("d_sender", rawPrivateKey);
+        localStorage.setItem("n_sender", res.data.public_key.n);
     }
 
     return res;
@@ -65,25 +66,38 @@ export const getMessages = async (conversation_id) => {
         { headers: { x_authorization: localStorage.getItem("access_token") } }
     );
     if (res.status == 200) {
-        const SECRET_KEY = localStorage.getItem("private_key");
+        const SECRET_KEY = {
+            d: bigInt(localStorage.getItem("d_sender")),
+            n: bigInt(localStorage.getItem("n_sender")),
+        };
         res.data.messages.map((message) => {
+            // console.log(
+            //     message.contentForSender.length,
+            //     message.contentForReceiver.length
+            // );
             let rawContent;
-            if (message.sender_id == localStorage.getItem("user_id")) {
+            if (message.senderId == localStorage.getItem("user_id")) {
                 rawContent = CryptoJS.AES.decrypt(
-                    message.contentForSender,
-                    SECRET_KEY
-                );
+                    message.content.substr(0, 44),
+                    localStorage.getItem("d_sender")
+                ).toString(CryptoJS.enc.Utf8);
+                // console.log("raw content for sender", rawContent);
             } else {
                 rawContent = RSA.decode(
                     RSA.decrypt(
-                        message.contentForReceiver,
-                        bigInt(SECRET_KEY),
-                        bigInt(localStorage.getItem("n"))
+                        bigInt(
+                            message.content.substr(
+                                44,
+                                message.content.length - 44
+                            )
+                        ),
+                        SECRET_KEY.d,
+                        SECRET_KEY.n
                     )
                 );
+                // console.log("raw content for receiver", rawContent);
             }
 
-            // console.log("raw content", rawContent);
             message.content = rawContent;
             return message;
         });
