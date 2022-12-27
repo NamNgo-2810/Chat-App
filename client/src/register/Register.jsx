@@ -77,12 +77,12 @@ export default function Register() {
                             Login to Account
                         </button>
                     </form>
-                    <button
+                    {/* <button
                         className="registerButton"
                         onClick={handleClickRegister}
                     >
                         Sign Up
-                    </button>
+                    </button> */}
                 </div>
             </div>
         </div>
