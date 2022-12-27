@@ -23,6 +23,7 @@ import {
     sendMessage,
 } from "./CommonCall";
 import bigInt from "big-integer";
+import { AES } from "crypto-js";
 
 function Chat() {
     const [conversations, setConversations] = useState([]);
@@ -31,7 +32,6 @@ function Chat() {
 
     const [arrivalMessage, setArrivalMessage] = useState(null);
     const [message, setMessage] = useState("");
-    const [publicKey, setPublicKey] = useState();
     const socket = useRef(io("ws://localhost:8900"));
     const user = {
         user_id: localStorage.getItem("user_id"),
@@ -52,8 +52,9 @@ function Chat() {
     const fetchMessages = async () => {
         try {
             const res = await getPublicKey(currentChat._id, user.user_id);
-            setPublicKey({ n: bigInt(res.n), e: bigInt(res.e) });
-            const res1 = await getMessages(currentChat._id, publicKey);
+            localStorage.setItem("n", res.n);
+            localStorage.setItem("e", res.e);
+            const res1 = await getMessages(currentChat._id);
             setMessages(res1.messages);
         } catch (error) {
             console.log(error);
@@ -66,17 +67,23 @@ function Chat() {
             return;
         }
 
-        const encryptedMessage = RSA.encrypt(
+        const encryptedMessageForReceiver = RSA.encrypt(
             RSA.encode(content),
-            publicKey.n,
-            publicKey.e
+            bigInt(localStorage.getItem("n")),
+            bigInt(localStorage.getItem("e"))
+        );
+
+        const encrypterMessageForSender = AES.encrypt(
+            content,
+            localStorage.getItem("private_key")
         );
 
         const newMessage = {
             sender: user.username,
             senderId: user.user_id,
             contentType: "text",
-            content: encryptedMessage,
+            contentForReceiver: encryptedMessageForReceiver,
+            contentForSender: encrypterMessageForSender,
             conversationId: currentChat._id,
         };
 
@@ -96,7 +103,7 @@ function Chat() {
             senderId: user.user_id,
             receiverId: receiverId,
             contentType: newMessage.contentType,
-            content: newMessage.content,
+            content: newMessage.contentForReceiver,
         });
 
         setMessage("");
@@ -111,8 +118,8 @@ function Chat() {
                 content: RSA.decode(
                     RSA.decrypt(
                         data.content,
-                        process.env.SECRET_KEY,
-                        publicKey.n
+                        bigInt(localStorage.getItem("private_key")),
+                        bigInt(localStorage.getItem("n"))
                     )
                 ),
                 createdAt: Date.now(),

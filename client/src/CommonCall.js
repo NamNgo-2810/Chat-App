@@ -15,7 +15,7 @@ export const register = async (username, password) => {
 
     console.log(encrypted_private_key);
 
-    const res = await axios.post(API_URI + `signup`, {
+    const res = await axios.post(API_URI + signup, {
         username: username,
         password: password,
         public_key: public_key,
@@ -26,7 +26,7 @@ export const register = async (username, password) => {
 };
 
 export const login = async (username, password) => {
-    const res = await axios.post(API_URI + `login`, {
+    const res = await axios.post(API_URI + login, {
         username: username,
         password: password,
     });
@@ -59,17 +59,30 @@ export const sendMessage = async (data) => {
     return res;
 };
 
-export const getMessages = async (conversation_id, public_key) => {
+export const getMessages = async (conversation_id) => {
     const res = await axios.get(
         API_URI + `/message?conversationId=${conversation_id}`,
         { headers: { x_authorization: localStorage.getItem("access_token") } }
     );
     if (res.status == 200) {
-        const SECRET_KEY = bigInt(localStorage.getItem("private_key"));
+        const SECRET_KEY = localStorage.getItem("private_key");
         res.data.messages.map((message) => {
-            const rawContent = RSA.decode(
-                RSA.decrypt(message.content, SECRET_KEY, public_key.n)
-            );
+            let rawContent;
+            if (message.sender_id == localStorage.getItem("user_id")) {
+                rawContent = CryptoJS.AES.decrypt(
+                    message.contentForSender,
+                    SECRET_KEY
+                );
+            } else {
+                rawContent = RSA.decode(
+                    RSA.decrypt(
+                        message.contentForReceiver,
+                        bigInt(SECRET_KEY),
+                        bigInt(localStorage.getItem("n"))
+                    )
+                );
+            }
+
             // console.log("raw content", rawContent);
             message.content = rawContent;
             return message;
