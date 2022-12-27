@@ -15,7 +15,7 @@ export const register = async (username, password) => {
 
     console.log(encrypted_private_key);
 
-    const res = await axios.post(API_URI + `signup`, {
+    const res = await axios.post(API_URI + signup, {
         username: username,
         password: password,
         public_key: public_key,
@@ -26,7 +26,7 @@ export const register = async (username, password) => {
 };
 
 export const login = async (username, password) => {
-    const res = await axios.post(API_URI + `login`, {
+    const res = await axios.post(API_URI + login, {
         username: username,
         password: password,
     });
