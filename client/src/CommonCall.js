@@ -44,6 +44,30 @@ export const login = async (username, password) => {
     return res;
 };
 
+export const createNewConversation = async (
+    user_id,
+    username,
+    avt_url,
+    receiver_username
+) => {
+    const res = await axios.post(
+        API_URI + "conversation/create",
+        {
+            user_id: user_id,
+            username: username,
+            avt_url: avt_url,
+            receiver_username: receiver_username,
+        },
+        {
+            headers: {
+                x_authorization: localStorage.getItem("access_token"),
+            },
+        }
+    );
+
+    return res;
+};
+
 export const getConversationOfUser = async (user_id) => {
     const res = await axios.get(API_URI + `conversation?userId=${user_id}`);
 
