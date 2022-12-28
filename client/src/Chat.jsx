@@ -16,6 +16,7 @@ import {
 import styles from "@chatscope/chat-ui-kit-styles/dist/default/styles.min.css";
 import RSA from "./RSA";
 import {
+    createNewConversation,
     getConversationOfUser,
     getMessages,
     getPublicKey,
@@ -24,6 +25,7 @@ import {
 } from "./CommonCall";
 import bigInt from "big-integer";
 import { AES } from "crypto-js";
+import { Link } from "react-router-dom";
 
 function Chat() {
     const [conversations, setConversations] = useState([]);
@@ -32,11 +34,16 @@ function Chat() {
 
     const [arrivalMessage, setArrivalMessage] = useState(null);
     const [message, setMessage] = useState("");
+    const [newReceiver, setNewReceiver] = useState("");
     const socket = useRef(io("ws://localhost:8900"));
     const user = {
         user_id: localStorage.getItem("user_id"),
         username: localStorage.getItem("username"),
+        avt_url: localStorage.getItem("avt_url"),
     };
+
+    const defaultAvatar =
+        "https://thumbs.dreamstime.com/b/default-avatar-profile-icon-vector-social-media-user-portrait-176256935.jpg";
 
     const fetchConversations = async () => {
         try {
@@ -108,6 +115,26 @@ function Chat() {
         setMessage("");
     };
 
+    const onSearch = async () => {
+        const res = await createNewConversation(
+            user.user_id,
+            user.username,
+            user.avt_url,
+            newReceiver
+        );
+        if (res.status == 400) {
+            alert("this user is not existed");
+            return;
+        } else if (res.status != 200) {
+            alert("something wrong");
+            return;
+        }
+
+        setConversations((prev) => [...prev, res.data]);
+        setCurrentChat(res.data);
+        setNewReceiver("");
+    };
+
     useEffect(() => {
         socket.current = io("ws://localhost:8900");
         socket.current.on("getMessage", (data) => {
@@ -139,7 +166,7 @@ function Chat() {
 
     useEffect(() => {
         fetchConversations();
-    }, [user.user_id]);
+    }, [user.user_id, conversations]);
 
     useEffect(() => {
         if (currentChat) {
@@ -148,133 +175,194 @@ function Chat() {
     }, [currentChat]);
 
     return (
-        <div style={{ marginTop: "80px", height: "450px" }}>
-            <button onClick={logout}>Logout</button>
-            <MainContainer>
-                <Sidebar position="left" scrollable={false}>
-                    <Search placeholder="Search..." />
-                    <ConversationList>
-                        {conversations?.map((conversation, index) => {
-                            return (
-                                <Conversation
-                                    onClick={() => {
-                                        setCurrentChat(conversation);
-                                    }}
-                                    key={`${index}`}
-                                    active={
-                                        conversation._id === currentChat._id
-                                    }
-                                >
-                                    <Avatar
-                                        status="available"
-                                        src={
-                                            conversation.members.find(
-                                                (member) =>
-                                                    member.id !== user.user_id
-                                            ).avtUrl
-                                        }
-                                    />
-                                    <Conversation.Content
-                                        style={{ textAlign: "start" }}
-                                        name={
-                                            conversation.members.find(
-                                                (member) =>
-                                                    member.id !== user.user_id
-                                            ).user
-                                        }
-                                        // lastSenderName={
-                                        //     messages?.[messages?.length - 1]
-                                        //         .sender
-                                        // }
-                                        // info={
-                                        //     messages?.[messages.length - 1]
-                                        //         .content
-                                        // }
-                                    />
-                                </Conversation>
-                            );
-                        })}
-                    </ConversationList>
-                </Sidebar>
-
-                <ChatContainer>
-                    {() => {
-                        if (currentChat) {
-                            return (
-                                <ConversationHeader>
-                                    <ConversationHeader.Back />
-                                    <Avatar
-                                        src={
-                                            currentChat.members.find(
-                                                (member) =>
-                                                    member.id !== user.user_id
-                                            ).avtUrl
-                                        }
-                                    />
-                                    <ConversationHeader.Content
-                                        userName={
-                                            currentChat.members.find(
-                                                (member) =>
-                                                    member.id !== user.user_id
-                                            ).user
-                                        }
-                                        info="Active"
-                                    />
-                                </ConversationHeader>
-                            );
-                        }
-                    }}
-
-                    <MessageList>
-                        {messages?.map((message, index) => {
-                            return (
-                                <Message
-                                    model={{
-                                        direction:
-                                            message?.senderId == user.user_id
-                                                ? "outgoing"
-                                                : "incoming",
-                                    }}
-                                    key={`${index}`}
-                                    avatarSpacer
-                                >
-                                    <Avatar
-                                        src={
-                                            currentChat?.members.find(
-                                                (member) =>
-                                                    message?.senderId ==
-                                                    member.id
-                                            )?.avtUrl
-                                        }
-                                    />
-
-                                    <Message.TextContent
-                                        text={message?.content}
-                                    />
-                                </Message>
-                            );
-                        })}
-                    </MessageList>
-                    <MessageInput
-                        placeholder="Aa"
-                        onSend={onSend}
-                        value={message}
-                        onChange={(e) => {
-                            setMessage(e);
-                        }}
-                        style={{ textAlign: "start" }}
-                        sendDisabled={false}
-                    />
-                </ChatContainer>
-            </MainContainer>
-            <button
-                type="submit"
-                title="Logout"
-                onClick={() => {
-                    localStorage.clear();
+        <>
+            <div
+                style={{
+                    display: "flex",
+                    margin: "10px",
+                    padding: "5px",
                 }}
-            />
-        </div>
+            >
+                <Avatar
+                    status="available"
+                    src={user.avt_url || defaultAvatar}
+                    size="lg"
+                />
+                <h3 style={{ marginLeft: "10px" }}>{user.username}</h3>
+            </div>
+            <div style={{ height: "500px" }}>
+                <MainContainer>
+                    <Sidebar position="left" scrollable={false}>
+                        <Search
+                            placeholder="Search..."
+                            onChange={(value) => setNewReceiver(value)}
+                            value={newReceiver}
+                            onKeyUp={(e) => {
+                                if (
+                                    e.key == "Enter" &&
+                                    newReceiver.length > 0
+                                ) {
+                                    // console.log(newReceiver);
+                                    onSearch();
+                                }
+                            }}
+                        />
+                        <ConversationList>
+                            {conversations?.map((conversation, index) => {
+                                return (
+                                    <Conversation
+                                        onClick={() => {
+                                            setCurrentChat(conversation);
+                                        }}
+                                        key={`${index}`}
+                                        active={
+                                            conversation._id === currentChat._id
+                                        }
+                                    >
+                                        <Avatar
+                                            status="available"
+                                            src={
+                                                conversation.members.find(
+                                                    (member) =>
+                                                        member.id !==
+                                                        user.user_id
+                                                ).avt_url || defaultAvatar
+                                            }
+                                        />
+                                        <Conversation.Content
+                                            style={{ textAlign: "start" }}
+                                            name={
+                                                conversation.members.find(
+                                                    (member) =>
+                                                        member.id !==
+                                                        user.user_id
+                                                ).user
+                                            }
+                                            // lastSenderName={
+                                            //     messages?.[messages?.length - 1]
+                                            //         .sender
+                                            // }
+                                            // info={
+                                            //     messages?.[messages.length - 1]
+                                            //         .content
+                                            // }
+                                        />
+                                    </Conversation>
+                                );
+                            })}
+                        </ConversationList>
+                    </Sidebar>
+
+                    <ChatContainer>
+                        {() => {
+                            if (currentChat) {
+                                return (
+                                    <ConversationHeader>
+                                        <ConversationHeader.Back />
+                                        <Avatar
+                                            src={
+                                                currentChat.members.find(
+                                                    (member) =>
+                                                        member.id !==
+                                                        user.user_id
+                                                ).avt_url || defaultAvatar
+                                            }
+                                        />
+                                        <ConversationHeader.Content
+                                            userName={
+                                                currentChat.members.find(
+                                                    (member) =>
+                                                        member.id !==
+                                                        user.user_id
+                                                ).user
+                                            }
+                                            info="Active"
+                                        />
+                                    </ConversationHeader>
+                                );
+                            }
+                        }}
+                        {currentChat && (
+                            <MessageList>
+                                {messages?.map((message, index) => {
+                                    return (
+                                        <Message
+                                            model={{
+                                                direction:
+                                                    message?.senderId ==
+                                                    user.user_id
+                                                        ? "outgoing"
+                                                        : "incoming",
+                                            }}
+                                            key={`${index}`}
+                                            avatarSpacer
+                                        >
+                                            <Avatar
+                                                src={
+                                                    currentChat?.members.find(
+                                                        (member) =>
+                                                            message?.senderId ==
+                                                            member.id
+                                                    )?.avt_url || defaultAvatar
+                                                }
+                                            />
+
+                                            <Message.TextContent
+                                                text={message?.content}
+                                            />
+                                        </Message>
+                                    );
+                                })}
+                            </MessageList>
+                        )}
+                        <MessageInput
+                            placeholder="Aa"
+                            onSend={onSend}
+                            value={message}
+                            onChange={(e) => {
+                                setMessage(e);
+                            }}
+                            style={{ textAlign: "start" }}
+                            sendDisabled={false}
+                            disabled={currentChat == null}
+                        />
+                    </ChatContainer>
+                </MainContainer>
+
+                <div
+                    style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        marginTop: "50px",
+                    }}
+                >
+                    <Link to="/">
+                        <button
+                            style={{
+                                width: "300px",
+                                backgroundColor: "#4caf50",
+                                padding: "14px 20px",
+                                margin: "auto",
+                                border: "none",
+                                borderRadius: "4px",
+                                cursor: "pointer",
+                            }}
+                            onClick={logout}
+                        >
+                            <p
+                                style={{
+                                    color: "white",
+                                    margin: "0",
+                                    padding: "0",
+                                }}
+                            >
+                                Logout
+                            </p>
+                        </button>
+                    </Link>
+                </div>
+            </div>
+        </>
     );
 }
 
