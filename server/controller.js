@@ -4,6 +4,17 @@ const Message = require("./models/Message");
 const { generateToken } = require("./crypto/jwt");
 const sha256 = require("./crypto/SHA256");
 
+const Avatars = [
+    "https://chatscope.io/storybook/react/static/media/zoe.e31a4ff8.svg",
+    "https://chatscope.io/storybook/react/static/media/lilly.62d4acff.svg",
+    "https://chatscope.io/storybook/react/static/media/joe.641da105.svg",
+    "https://chatscope.io/storybook/react/static/media/emily.d34aecd9.svg",
+    "https://chatscope.io/storybook/react/static/media/kai.b62f69dc.svg",
+    "https://chatscope.io/storybook/react/static/media/akane.b135c3e3.svg",
+    "https://chatscope.io/storybook/react/static/media/eliot.d7038eac.svg",
+    "https://chatscope.io/storybook/react/static/media/patrik.d89db575.svg",
+];
+
 exports.ping = (req, res) => {
     return res.status(200).json({ message: "pong" });
 };
@@ -25,6 +36,7 @@ exports.signup = async (req, res) => {
             password: hashPassword,
             public_key: req.body.public_key,
             private_key: req.body.private_key,
+            avt_url: Avatars[Math.floor(Math.random() * Avatars.length)],
         });
 
         await newUser.save();
@@ -71,33 +83,42 @@ exports.login = async (req, res) => {
 };
 
 exports.createNewConversation = async (req, res) => {
+    const { user_id, username, avt_url, receiver_username } = req.body;
     const existConversations = await Conversation.find({
-        id: req.body.id_1,
+        "members.id": { $in: [user_id] },
     });
 
     const exist = existConversations.find(
         (conversation) =>
-            (conversation.members[0].id == req.body.id_1 &&
-                conversation.members[1].id == req.body.id_2) ||
-            (conversation.members[0].id == req.body.id_2 &&
-                conversation.members[1].id == req.body.id_1)
+            (conversation.members[0].id == user_id &&
+                conversation.members[1].username == receiver_username) ||
+            (conversation.members[0].username == receiver_username &&
+                conversation.members[1].id == user_id)
     );
 
     if (exist) {
         return res.status(200).json(exist);
     }
 
+    const receiver = await User.findOne({
+        username: receiver_username,
+    });
+
+    if (!receiver) {
+        return res.status(400).json({ message: "this user is not existed" });
+    }
+
     const newConversation = new Conversation({
         members: [
             {
-                id: req.body.id_1,
-                user: req.body.user_1,
-                avtUrl: req.body.avt_1,
+                id: user_id,
+                username: username,
+                avt_url: avt_url,
             },
             {
-                id: req.body.id_2,
-                user: req.body.user_2,
-                avtUrl: req.body.avt_2,
+                id: receiver._id.toString(),
+                username: receiver_username,
+                avt_url: receiver.avt_url,
             },
         ],
     });
@@ -113,7 +134,7 @@ exports.createNewConversation = async (req, res) => {
 exports.getConversationOfUser = async (req, res) => {
     try {
         const conversation = await Conversation.find({
-            id: req.query.userId,
+            members: { $elemMatch: { id: req.query.userId } },
         });
 
         return res.status(200).json(conversation);
