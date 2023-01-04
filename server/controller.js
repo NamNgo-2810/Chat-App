@@ -49,6 +49,7 @@ exports.signup = async (req, res) => {
 
 exports.login = async (req, res) => {
     try {
+        console.log(req.body);
         const { username, password } = req.body;
         const checkUser = await User.find({
             username: username,
@@ -69,7 +70,7 @@ exports.login = async (req, res) => {
             process.env.ACCESS_TOKEN_LIFE
         );
 
-        return res.json({
+        return res.status(200).json({
             access_token: accessToken,
             username: checkUser[0].username,
             user_id: checkUser[0]._id,
@@ -145,6 +146,7 @@ exports.getConversationOfUser = async (req, res) => {
 
 exports.sendMessage = async (req, res) => {
     const newMessage = new Message(req.body);
+    console.log("message", newMessage);
     try {
         const savedMessage = await newMessage.save();
         return res.status(200).json(savedMessage);

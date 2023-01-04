@@ -1,32 +1,38 @@
-import "./App.css";
-import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
+import { useState } from "react";
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Chat from "./Chat";
 import Login from "./login/Login";
 import Register from "./register/Register";
-import { useEffect, useState } from "react";
 
-function App() {
-    const [loggedIn, setLoggedIn] = useState(false);
-
-    useEffect(() => {
-        setLoggedIn(localStorage.getItem("access_token"));
-    }, [loggedIn]);
-
-    return (
-        <div>
-            <BrowserRouter>
-                <Routes>
-                    <Route path="/" element={loggedIn ? <Chat /> : <Login />} />
-                    <Route
-                        path="/chat"
-                        element={loggedIn ? <Chat /> : <Login />}
-                    />
-                    {/* <Route path="/" element={<Login />} /> */}
-                    <Route path="/register" element={<Register />} />
-                </Routes>
-            </BrowserRouter>
-        </div>
+const App = () => {
+    const [isLoggedIn, setIsLoggedIn] = useState(
+        localStorage.getItem("access_token") != null
     );
-}
+    return (
+        <Router>
+            <Routes>
+                {/* <Route
+                    path="/login"
+                    element={<Login setIsLoggedIn={setIsLoggedIn} />}
+                /> */}
+                <Route path="/register" element={<Register />} />
+                <Route
+                    path="/"
+                    element={
+                        isLoggedIn ? (
+                            <Chat setIsLoggedIn={setIsLoggedIn} />
+                        ) : (
+                            <Login setIsLoggedIn={setIsLoggedIn} />
+                        )
+                    }
+                />
+                {/* <Route
+                    path="/chat"
+                    element={isLoggedIn ? <Chat /> : <Login />}
+                /> */}
+            </Routes>
+        </Router>
+    );
+};
 
 export default App;

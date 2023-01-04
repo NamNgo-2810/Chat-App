@@ -14,6 +14,7 @@ import {
     Search,
 } from "@chatscope/chat-ui-kit-react";
 import styles from "@chatscope/chat-ui-kit-styles/dist/default/styles.min.css";
+import Switch from "react-switch";
 import RSA from "./RSA";
 import {
     createNewConversation,
@@ -25,9 +26,9 @@ import {
 } from "./CommonCall";
 import bigInt from "big-integer";
 import { AES } from "crypto-js";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
-function Chat() {
+function Chat({ setIsLoggedIn }) {
     const [conversations, setConversations] = useState([]);
     const [currentChat, setCurrentChat] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -35,6 +36,7 @@ function Chat() {
     const [arrivalMessage, setArrivalMessage] = useState(null);
     const [message, setMessage] = useState("");
     const [newReceiver, setNewReceiver] = useState("");
+    const [encryptedMode, setEncryptedMode] = useState(true);
     const socket = useRef(io("ws://localhost:8900"));
     const user = {
         user_id: localStorage.getItem("user_id"),
@@ -64,8 +66,46 @@ function Chat() {
             const res1 = await getMessages(currentChat._id);
             setMessages(res1.messages);
         } catch (error) {
-            console.log(error);
+            // console.log(error);
         }
+    };
+
+    const onSendRaw = async (content) => {
+        if (!content) {
+            console.log("Empty");
+            return;
+        }
+
+        const newMessage = {
+            sender: user.username,
+            senderId: user.user_id,
+            contentType: "text",
+            encrypted: false,
+            content: content,
+            conversationId: currentChat._id,
+        };
+
+        try {
+            const res = await sendMessage(newMessage);
+            setMessages([...messages, { ...res.data, content: content }]);
+        } catch (error) {
+            console.log(error);
+            return;
+        }
+
+        const receiverId = currentChat.members.find(
+            (member) => member.id != user.user_id
+        ).id;
+
+        socket.current.emit("sendMessage", {
+            senderId: user.user_id,
+            receiverId: receiverId,
+            contentType: newMessage.contentType,
+            content: content,
+            encrypted: false,
+        });
+
+        setMessage("");
     };
 
     const onSend = async (content) => {
@@ -89,6 +129,8 @@ function Chat() {
             sender: user.username,
             senderId: user.user_id,
             contentType: "text",
+            encrypted: true,
+            // content: encryptedMessageForReceiver,
             content: `${encryptedMessageForSender}${encryptedMessageForReceiver}`,
             conversationId: currentChat._id,
         };
@@ -110,6 +152,7 @@ function Chat() {
             receiverId: receiverId,
             contentType: newMessage.contentType,
             content: encryptedMessageForReceiver,
+            encrypted: true,
         });
 
         setMessage("");
@@ -138,16 +181,19 @@ function Chat() {
     useEffect(() => {
         socket.current = io("ws://localhost:8900");
         socket.current.on("getMessage", (data) => {
+            console.log("Message arrival", data);
             setArrivalMessage({
                 senderId: data.senderId,
                 contentType: data.contentType,
-                content: RSA.decode(
-                    RSA.decrypt(
-                        data.content,
-                        bigInt(localStorage.getItem("d_sender")),
-                        bigInt(localStorage.getItem("n_sender"))
-                    )
-                ),
+                content: data.encrypted
+                    ? RSA.decode(
+                          RSA.decrypt(
+                              data.content,
+                              bigInt(localStorage.getItem("d_sender")),
+                              bigInt(localStorage.getItem("n_sender"))
+                          )
+                      )
+                    : data.content,
                 createdAt: Date.now(),
             });
         });
@@ -165,13 +211,22 @@ function Chat() {
     }, [arrivalMessage]);
 
     useEffect(() => {
-        fetchConversations();
-    }, [user.user_id, conversations]);
+        if (conversations) {
+            fetchConversations();
+        }
+        return () => {
+            console.log("Unmount");
+        };
+    }, [user.user_id]);
 
     useEffect(() => {
         if (currentChat) {
             fetchMessages();
         }
+
+        return () => {
+            console.log("Unmount");
+        };
     }, [currentChat]);
 
     return (
@@ -179,18 +234,38 @@ function Chat() {
             <div
                 style={{
                     display: "flex",
-                    margin: "10px",
+                    justifyContent: "space-between",
+                    margin: "15px",
+                    marginBottom: "10px",
                     padding: "5px",
                 }}
             >
-                <Avatar
-                    status="available"
-                    src={user.avt_url || defaultAvatar}
-                    size="lg"
-                />
-                <h3 style={{ marginLeft: "10px" }}>{user.username}</h3>
+                <div style={{ display: "flex" }}>
+                    <Avatar
+                        status="available"
+                        src={user.avt_url || defaultAvatar}
+                        size="lg"
+                    />
+                    <h3 style={{ marginLeft: "10px" }}>{user.username}</h3>
+                </div>
+                <div
+                    style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                    }}
+                >
+                    <label>Encrypt message</label>
+                    <br />
+                    <Switch
+                        checked={encryptedMode}
+                        onChange={() => {
+                            setEncryptedMode(!encryptedMode);
+                        }}
+                    />
+                </div>
             </div>
-            <div style={{ height: "500px" }}>
+            <div style={{ height: "510px" }}>
                 <MainContainer>
                     <Sidebar position="left" scrollable={false}>
                         <Search
@@ -317,7 +392,7 @@ function Chat() {
                         )}
                         <MessageInput
                             placeholder="Aa"
-                            onSend={onSend}
+                            onSend={encryptedMode ? onSend : onSendRaw}
                             value={message}
                             onChange={(e) => {
                                 setMessage(e);
@@ -328,38 +403,40 @@ function Chat() {
                         />
                     </ChatContainer>
                 </MainContainer>
-
+                <br />
                 <div
                     style={{
                         display: "flex",
                         justifyContent: "center",
-                        marginTop: "50px",
                     }}
                 >
-                    <Link to="/">
-                        <button
+                    <button
+                        style={{
+                            width: "300px",
+                            backgroundColor: "#4caf50",
+                            padding: "14px 20px",
+                            margin: "auto",
+                            border: "none",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                        }}
+                        onClick={() => {
+                            logout();
+                            setConversations(null);
+                            setCurrentChat(null);
+                            setIsLoggedIn(false);
+                        }}
+                    >
+                        <p
                             style={{
-                                width: "300px",
-                                backgroundColor: "#4caf50",
-                                padding: "14px 20px",
-                                margin: "auto",
-                                border: "none",
-                                borderRadius: "4px",
-                                cursor: "pointer",
+                                color: "white",
+                                margin: "0",
+                                padding: "0",
                             }}
-                            onClick={logout}
                         >
-                            <p
-                                style={{
-                                    color: "white",
-                                    margin: "0",
-                                    padding: "0",
-                                }}
-                            >
-                                Logout
-                            </p>
-                        </button>
-                    </Link>
+                            Logout
+                        </p>
+                    </button>
                 </div>
             </div>
         </>

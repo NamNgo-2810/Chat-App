@@ -14,6 +14,9 @@ const MessageSchema = new mongoose.Schema(
         content: {
             type: String,
         },
+        encrypted: {
+            type: Boolean,
+        },
     },
     {
         timestamps: true,

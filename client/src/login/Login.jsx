@@ -3,26 +3,27 @@ import { Link, useNavigate } from "react-router-dom";
 import { login } from "../CommonCall";
 import "./Login.css";
 
-function Login() {
+function Login({ setIsLoggedIn }) {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
 
-    const navigate = useNavigate();
-
     const handleSubmit = async () => {
         const result = await login(username, password);
+        console.log(result);
         if (result.data.access_token) {
             localStorage.setItem("access_token", result.data.access_token);
             localStorage.setItem("username", result.data.username);
             localStorage.setItem("user_id", result.data.user_id);
             localStorage.setItem("avt_url", result.data.avt_url);
-            navigate("/chat");
+            setIsLoggedIn(true);
         } else alert("wrong credentials");
+
+        return;
     };
 
     return (
         <>
-            <form className="login-form" onSubmit={handleSubmit}>
+            <div className="login-form">
                 <label>
                     Username:
                     <input
@@ -41,12 +42,12 @@ function Login() {
                     />
                 </label>
                 <br />
-                <button type="submit">Log in</button>
+                <button onClick={handleSubmit}>Log in</button>
                 <label>Don't have an account?</label>
                 <Link to="/register">
                     <button>Sign up for a new account</button>
                 </Link>
-            </form>
+            </div>
             <br />
         </>
     );

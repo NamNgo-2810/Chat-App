@@ -25,7 +25,7 @@ export default function Register() {
 
     return (
         <>
-            <form className="login-form" onSubmit={handleSubmit}>
+            <div className="login-form">
                 <label>
                     Username:
                     <input
@@ -55,12 +55,12 @@ export default function Register() {
                     />
                 </label>
                 <br />
-                <button type="submit">Sign Up</button>
+                <button onClick={handleSubmit}>Sign Up</button>
                 <label>Already have an account?</label>
-                <Link to="/">
+                <Link to="/login">
                     <button>Go to login</button>
                 </Link>
-            </form>
+            </div>
             <br />
         </>
     );

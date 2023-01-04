@@ -100,6 +100,9 @@ export const getMessages = async (conversation_id) => {
             //     message.contentForReceiver.length
             // );
             let rawContent;
+            if (!message.encrypted) {
+                return message;
+            }
             if (message.senderId == localStorage.getItem("user_id")) {
                 rawContent = CryptoJS.AES.decrypt(
                     message.content.substr(0, 44),
