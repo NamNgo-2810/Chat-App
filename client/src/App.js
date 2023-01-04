@@ -21,6 +21,7 @@ function App() {
                         path="/chat"
                         element={loggedIn ? <Chat /> : <Login />}
                     />
+                    {/* <Route path="/" element={<Login />} /> */}
                     <Route path="/register" element={<Register />} />
                 </Routes>
             </BrowserRouter>
