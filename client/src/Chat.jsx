@@ -15,18 +15,15 @@ import {
 } from "@chatscope/chat-ui-kit-react";
 import styles from "@chatscope/chat-ui-kit-styles/dist/default/styles.min.css";
 import Switch from "react-switch";
-import RSA from "./RSA";
 import {
     createNewConversation,
     getConversationOfUser,
     getMessages,
-    getPublicKey,
+    getConversationKey,
     logout,
     sendMessage,
 } from "./CommonCall";
-import bigInt from "big-integer";
-import { AES } from "crypto-js";
-import { useNavigate } from "react-router-dom";
+import { AES, enc } from "crypto-js";
 
 function Chat({ setIsLoggedIn }) {
     const [conversations, setConversations] = useState([]);
@@ -60,9 +57,15 @@ function Chat({ setIsLoggedIn }) {
 
     const fetchMessages = async () => {
         try {
-            const res = await getPublicKey(currentChat._id, user.user_id);
-            localStorage.setItem("n_receiver", res.n);
-            localStorage.setItem("e_receiver", res.e);
+            // const res = await getPublicKey(currentChat._id, user.user_id);
+            // localStorage.setItem("n_receiver", res.n);
+            // localStorage.setItem("e_receiver", res.e);
+            const res = await getConversationKey(
+                currentChat._id,
+                localStorage.getItem("RSA_n"),
+                localStorage.getItem("RSA_e")
+            );
+            localStorage.setItem("conversation_key", res);
             const res1 = await getMessages(currentChat._id);
             setMessages(res1.messages);
         } catch (error) {
@@ -114,15 +117,20 @@ function Chat({ setIsLoggedIn }) {
             return;
         }
 
-        const encryptedMessageForReceiver = RSA.encrypt(
-            RSA.encode(content),
-            bigInt(localStorage.getItem("n_receiver")),
-            bigInt(localStorage.getItem("e_receiver"))
-        );
+        // const encryptedMessageForReceiver = RSA.encrypt(
+        //     RSA.encode(content),
+        //     bigInt(localStorage.getItem("n_receiver")),
+        //     bigInt(localStorage.getItem("e_receiver"))
+        // );
 
-        const encryptedMessageForSender = AES.encrypt(
+        // const encryptedMessageForSender = AES.encrypt(
+        //     content,
+        //     localStorage.getItem("d_sender")
+        // ).toString();
+
+        const encryptedMessage = AES.encrypt(
             content,
-            localStorage.getItem("d_sender")
+            localStorage.getItem("conversation_key")
         ).toString();
 
         const newMessage = {
@@ -131,7 +139,8 @@ function Chat({ setIsLoggedIn }) {
             contentType: "text",
             encrypted: true,
             // content: encryptedMessageForReceiver,
-            content: `${encryptedMessageForSender}${encryptedMessageForReceiver}`,
+            // content: `${encryptedMessageForSender}${encryptedMessageForReceiver}`,
+            content: encryptedMessage,
             conversationId: currentChat._id,
         };
 
@@ -151,7 +160,8 @@ function Chat({ setIsLoggedIn }) {
             senderId: user.user_id,
             receiverId: receiverId,
             contentType: newMessage.contentType,
-            content: encryptedMessageForReceiver,
+            // content: encryptedMessageForReceiver,
+            content: encryptedMessage,
             encrypted: true,
         });
 
@@ -163,7 +173,9 @@ function Chat({ setIsLoggedIn }) {
             user.user_id,
             user.username,
             user.avt_url,
-            newReceiver
+            newReceiver,
+            localStorage.getItem("RSA_n"),
+            localStorage.getItem("RSA_e")
         );
         if (res.status == 400) {
             alert("this user is not existed");
@@ -185,14 +197,20 @@ function Chat({ setIsLoggedIn }) {
             setArrivalMessage({
                 senderId: data.senderId,
                 contentType: data.contentType,
+                // content: data.encrypted
+                //     ? RSA.decode(
+                //           RSA.decrypt(
+                //               data.content,
+                //               bigInt(localStorage.getItem("d_sender")),
+                //               bigInt(localStorage.getItem("n_sender"))
+                //           )
+                //       )
+                //     : data.content,
                 content: data.encrypted
-                    ? RSA.decode(
-                          RSA.decrypt(
-                              data.content,
-                              bigInt(localStorage.getItem("d_sender")),
-                              bigInt(localStorage.getItem("n_sender"))
-                          )
-                      )
+                    ? AES.decrypt(
+                          data.content,
+                          localStorage.getItem("conversation_key")
+                      ).toString(enc.Utf8)
                     : data.content,
                 createdAt: Date.now(),
             });
